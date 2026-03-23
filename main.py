@@ -1,7 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import shutil
 import os
 from pathlib import Path
 from datetime import datetime
@@ -19,24 +18,22 @@ app.add_middleware(
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-# Max file size: 100MB
 MAX_FILE_SIZE = 100 * 1024 * 1024
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index():
-    with open("templates/index.html") as f:
-        return f.read()
+# ✅ FIXED ROOT ROUTE (no file dependency)
+@app.get("/")
+async def home():
+    return {"message": "File Upload Server is running 🚀"}
 
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    # Validate file size
     contents = await file.read()
+
     if len(contents) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File too large (max 100MB)")
 
-    # Save with unique name to avoid collisions
     ext = Path(file.filename).suffix
     unique_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}{ext}"
     save_path = UPLOAD_DIR / unique_name
@@ -77,4 +74,4 @@ async def delete_file(filename: str):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "uptime": "running"}
+    return {"status": "ok"}
