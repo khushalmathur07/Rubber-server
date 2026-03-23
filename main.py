@@ -1,13 +1,13 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-import os
 from pathlib import Path
 from datetime import datetime
 import uuid
 
 app = FastAPI(title="File Upload Server")
 
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,18 +15,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Upload directory
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# Max file size: 100MB
 MAX_FILE_SIZE = 100 * 1024 * 1024
 
 
-# ✅ FIXED ROOT ROUTE (no file dependency)
+# ✅ Root route
 @app.get("/")
 async def home():
     return {"message": "File Upload Server is running 🚀"}
 
 
+# 📤 Upload file
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     contents = await file.read()
@@ -50,6 +53,7 @@ async def upload_file(file: UploadFile = File(...)):
     })
 
 
+# 📂 List files
 @app.get("/files")
 async def list_files():
     files = []
@@ -63,6 +67,16 @@ async def list_files():
     return {"files": files, "total": len(files)}
 
 
+# 📥 Download file
+@app.get("/download/{filename}")
+async def download_file(filename: str):
+    path = UPLOAD_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(path, filename=filename)
+
+
+# 🗑 Delete file
 @app.delete("/files/{filename}")
 async def delete_file(filename: str):
     path = UPLOAD_DIR / filename
@@ -72,6 +86,7 @@ async def delete_file(filename: str):
     return {"status": "deleted", "filename": filename}
 
 
+# ❤️ Health check
 @app.get("/health")
 async def health():
     return {"status": "ok"}
